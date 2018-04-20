@@ -27,25 +27,20 @@ public class Bank {
      * @param to Счет, на который переводятся деньги
      * @param amount Сумма перевода
      */
-    public void transfer(int from, int to, double amount) {
+    public synchronized void transfer(int from, int to, double amount) {
 
-        bankLock.lock();
         try {
             while (accounts[from] < amount)
-                sufficientFunds.await();
+                wait();
             System.out.println(Thread.currentThread().getName());
             accounts[from] -= amount;
             System.out.printf(" %10.2f from %d to %d \n", amount, from, to);
             accounts[to] += amount;
-            sufficientFunds.signalAll();
+            notifyAll();
             System.out.printf(Thread.currentThread().getName() + " Total Balance: %10.2f\n", getTotalBalance());
         } catch (InterruptedException exception) {
             exception.printStackTrace();
         }
-        finally {
-            bankLock.unlock();
-        }
-
     }
 
     /**
