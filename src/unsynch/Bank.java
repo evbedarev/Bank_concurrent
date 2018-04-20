@@ -1,9 +1,14 @@
 package unsynch;
 
 import java.util.Arrays;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Bank {
     private final double[] accounts;
+    private Condition sufficientFunds;
+    private Lock bankLock = new ReentrantLock();
 
     /**
      * Конструирует объект банка
@@ -13,6 +18,7 @@ public class Bank {
     public Bank(int countAcc, double initialBalance) {
         accounts = new double[countAcc];
         Arrays.fill(accounts,initialBalance);
+        sufficientFunds = bankLock.newCondition();
     }
 
     /**
@@ -22,12 +28,24 @@ public class Bank {
      * @param amount Сумма перевода
      */
     public void transfer(int from, int to, double amount) {
-        if (accounts[from] < amount) return;
-        System.out.println(Thread.currentThread());
-        accounts[from] -= amount;
-        System.out.printf(" %10.2f from %d to %d", amount, from, to);
-        accounts[to] += amount;
-        System.out.printf(" Total Balance: %10.2f\n", getTotalBalance());
+
+        bankLock.lock();
+        try {
+            while (accounts[from] < amount)
+                sufficientFunds.await();
+            System.out.println(Thread.currentThread().getName());
+            accounts[from] -= amount;
+            System.out.printf(" %10.2f from %d to %d \n", amount, from, to);
+            accounts[to] += amount;
+            sufficientFunds.signalAll();
+            System.out.printf(Thread.currentThread().getName() + " Total Balance: %10.2f\n", getTotalBalance());
+        } catch (InterruptedException exception) {
+            exception.printStackTrace();
+        }
+        finally {
+            bankLock.unlock();
+        }
+
     }
 
     /**
@@ -46,5 +64,7 @@ public class Bank {
         return accounts.length;
     }
 
-
+    public double getFrom (int from) {
+        return accounts[from];
+    }
 }
