@@ -42,5 +42,9 @@ public class Bank {
         return sum;
     }
 
+    public int size() {
+        return accounts.length;
+    }
+
 
 }
